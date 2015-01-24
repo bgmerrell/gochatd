@@ -1,34 +1,60 @@
 package raw
 
 import (
+	"bytes"
+	"errors"
+	"fmt"
 	"log"
 	"net"
-	"strings"
 
 	"github.com/bgmerrell/gochatd/handlers"
 )
 
-func Handle(conn net.Conn) {
-	_, err := conn.Write([]byte("What's your name?: "))
+const (
+	namePrompt  = "What's your name?: "
+	maxNameSize = 32
+)
+
+var buf []byte
+
+func init() {
+	buf = make([]byte, handlers.BufSize)
+}
+
+func validateName(name string) (ok bool) {
+	if len(name) == 0 || len(name) > maxNameSize {
+		return false
+	}
+	return true
+}
+
+func getName(conn net.Conn) (name []byte, err error) {
+	_, err = conn.Write([]byte(namePrompt))
 	if err != nil {
 		log.Println("Error requesting name:", err.Error())
-		return
+		return name, errors.New("Error requesting name: " + err.Error())
 	}
-	buf := make([]byte, handlers.BufSize)
 	n, err := conn.Read(buf)
 	if err != nil {
 		log.Println(err)
-		conn.Close()
+		return name, errors.New("Error reading name: " + err.Error())
 	}
-	log.Println("buf", buf)
-	name := strings.TrimSpace(string(buf[:n]))
-	log.Printf("name: \"%s\"", name)
-	if name == "foo" {
-		log.Println("no foos allowed")
-		_, _ = conn.Write([]byte("No foos allowed!\n"))
+	name = bytes.TrimSpace(buf[:n])
+	if !validateName(string(name)) {
+		log.Printf("Invalid name: %s", name)
+		return name, errors.New("Invalid name")
+	}
+	return name, err
+}
+
+func Handle(conn net.Conn) {
+	name, err := getName(conn)
+	if err != nil {
+		_, _ = conn.Write([]byte(fmt.Sprintf("Disconnecting: %s\n", err)))
 		conn.Close()
 		return
 	}
+	log.Printf("%s joined", name)
 	for {
 		n, err := conn.Read(buf)
 		if err != nil {
