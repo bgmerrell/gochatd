@@ -14,7 +14,7 @@ import (
 // for unit tests.  It communicates reads and writes over the Ch channel.
 type dummyConn struct {
 	Ch       chan []byte
-	IsClosed bool
+	isClosed bool
 	mu       sync.Mutex
 }
 
@@ -36,9 +36,6 @@ func (d *dummyConn) Read(b []byte) (n int, err error) {
 		return 0, errors.New(fmt.Sprintf(
 			"Message too large to read (%d)", len(b)))
 	}
-	if d.IsClosed {
-		return 0, errors.New("Connection is closed")
-	}
 	out := <-d.Ch
 	if out == nil {
 		return 0, errors.New("Connection closed")
@@ -50,29 +47,29 @@ func (d *dummyConn) Read(b []byte) (n int, err error) {
 // Write writes the bytes from b into Ch.  It returns the number of bytes
 // written and any errors.
 func (d *dummyConn) Write(b []byte) (n int, err error) {
-	// We don't want to write to a closed channel
-	d.mu.Lock()
-	defer d.mu.Unlock()
 	if len(b) > dummyBufSize {
 		return 0, errors.New(fmt.Sprintf(
 			"Message too large to write (%d)", len(b)))
 	}
-	if d.IsClosed {
-		return 0, errors.New("Connection is closed")
-	}
+	defer func() {
+		// Return error if the "connection" (i.e., the channel) is closed
+		if e := recover(); e != nil {
+			err = errors.New("Connection is closed")
+		}
+	}()
 	b = b[:]
 	d.Ch <- b
 	return len(b), nil
 }
 
-// Close marks the dummyConn as closed and closes Ch
+// Close marks the dummyConn as closed and closes Ch.  Close() can be called
+// multiple times.
 func (d *dummyConn) Close() error {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	if !d.IsClosed {
-		close(d.Ch)
-		d.IsClosed = true
-	}
+	defer func() {
+		// Channel already closed, that's OK
+		recover()
+	}()
+	close(d.Ch)
 	return nil
 }
 

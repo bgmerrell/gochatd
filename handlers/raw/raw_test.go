@@ -89,9 +89,6 @@ func TestHandleEmptyName(t *testing.T) {
 	}
 
 	wg.Wait()
-	if !dc.IsClosed {
-		t.Errorf("Connection unexpectedly open")
-	}
 }
 
 func TestHandleLongName(t *testing.T) {
@@ -129,9 +126,6 @@ func TestHandleLongName(t *testing.T) {
 	}
 
 	wg.Wait()
-	if !dc.IsClosed {
-		t.Errorf("Connection unexpectedly open")
-	}
 }
 
 func TestGetNameErrRequesting(t *testing.T) {
@@ -164,7 +158,4 @@ func TestHandleErrReadingName(t *testing.T) {
 	dc.Close()
 
 	wg.Wait()
-	if !dc.IsClosed {
-		t.Errorf("Connection unexpectedly open")
-	}
 }
