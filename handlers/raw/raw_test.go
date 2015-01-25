@@ -6,6 +6,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/bgmerrell/gochatd/chat"
 	"github.com/bgmerrell/gochatd/dummyconn"
 	"github.com/bgmerrell/gochatd/handlers"
 )
@@ -13,11 +14,12 @@ import (
 var wg sync.WaitGroup
 
 func TestHandle(t *testing.T) {
+	cm := chat.NewChatManager()
 	dc := dummyconn.NewDummyConn()
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		Handle(dc)
+		Handle(cm, dc)
 	}()
 	buf := make([]byte, handlers.BufSize)
 	n, err := dc.Read(buf)
@@ -54,11 +56,12 @@ func TestHandle(t *testing.T) {
 }
 
 func TestHandleEmptyName(t *testing.T) {
+	cm := chat.NewChatManager()
 	dc := dummyconn.NewDummyConn()
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		Handle(dc)
+		Handle(cm, dc)
 	}()
 	buf := make([]byte, handlers.BufSize)
 	n, err := dc.Read(buf)
@@ -92,11 +95,12 @@ func TestHandleEmptyName(t *testing.T) {
 }
 
 func TestHandleLongName(t *testing.T) {
+	cm := chat.NewChatManager()
 	dc := dummyconn.NewDummyConn()
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		Handle(dc)
+		Handle(cm, dc)
 	}()
 	buf := make([]byte, handlers.BufSize)
 	n, err := dc.Read(buf)
@@ -138,11 +142,12 @@ func TestGetNameErrRequesting(t *testing.T) {
 }
 
 func TestHandleErrReadingName(t *testing.T) {
+	cm := chat.NewChatManager()
 	dc := dummyconn.NewDummyConn()
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		Handle(dc)
+		Handle(cm, dc)
 	}()
 	buf := make([]byte, handlers.BufSize)
 	n, err := dc.Read(buf)
@@ -157,5 +162,64 @@ func TestHandleErrReadingName(t *testing.T) {
 
 	dc.Close()
 
+	wg.Wait()
+}
+
+func TestHandleDuplicateUser(t *testing.T) {
+	cm := chat.NewChatManager()
+	dc1 := dummyconn.NewDummyConn()
+	dc2 := dummyconn.NewDummyConn()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		Handle(cm, dc1)
+	}()
+	go func() {
+		defer wg.Done()
+		Handle(cm, dc2)
+	}()
+	buf := make([]byte, handlers.BufSize)
+
+	// "testuser" logging in on dc1
+	n, err := dc1.Read(buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rMsg := buf[:n]
+	expected := []byte(namePrompt)
+	if !bytes.Equal(rMsg, expected) {
+		t.Fatalf("Unexpected read: %s, want: %s.", rMsg, expected)
+	}
+	wMsg := []byte("testuser\r\n")
+	n, err = dc1.Write(wMsg)
+	expectedN := len(wMsg)
+	if n != expectedN {
+		t.Error("n: %d, want: %d.", n, expectedN)
+	}
+
+	// "testuser" logging in on dc2
+	n, err = dc2.Read(buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rMsg = buf[:n]
+	expected = []byte(namePrompt)
+	if !bytes.Equal(rMsg, expected) {
+		t.Fatalf("Unexpected read: %s, want: %s.", rMsg, expected)
+	}
+	wMsg = []byte("testuser\r\n")
+	n, err = dc2.Write(wMsg)
+	expectedN = len(wMsg)
+	if n != expectedN {
+		t.Error("n: %d, want: %d.", n, expectedN)
+	}
+
+	// mock client disconnect of dc1; no need to disconnect dc2 due to
+	// duplicate user.
+	err = dc1.Close()
+
+	if err != nil {
+		t.Fatal("Error closing:", err.Error())
+	}
 	wg.Wait()
 }

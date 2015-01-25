@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 
+	"github.com/bgmerrell/gochatd/chat"
 	"github.com/bgmerrell/gochatd/handlers"
 )
 
@@ -28,7 +29,7 @@ func validateName(name string) (ok bool) {
 	return true
 }
 
-func getName(conn net.Conn) (name []byte, err error) {
+func getName(conn net.Conn) (name string, err error) {
 	_, err = conn.Write([]byte(namePrompt))
 	if err != nil {
 		log.Println("Error requesting name:", err.Error())
@@ -36,32 +37,38 @@ func getName(conn net.Conn) (name []byte, err error) {
 	}
 	n, err := conn.Read(buf)
 	if err != nil {
-		log.Println(err)
+		log.Println("Error reading name: ", err.Error())
 		return name, errors.New("Error reading name: " + err.Error())
 	}
-	name = bytes.TrimSpace(buf[:n])
-	if !validateName(string(name)) {
+	name = string(bytes.TrimSpace(buf[:n]))
+	if !validateName(name) {
 		log.Printf("Invalid name: %s", name)
 		return name, errors.New("Invalid name")
 	}
 	return name, err
 }
 
-func Handle(conn net.Conn) {
+func Handle(cm *chat.ChatManager, conn net.Conn) {
 	name, err := getName(conn)
 	if err != nil {
 		_, _ = conn.Write([]byte(fmt.Sprintf("Disconnecting: %s\n", err)))
 		conn.Close()
 		return
 	}
-	log.Printf("%s joined", name)
+	err = cm.Join(name, conn)
+	if err != nil {
+		_, _ = conn.Write([]byte(fmt.Sprintf("Disconnecting: %s\n", err)))
+		conn.Close()
+		return
+	}
 	for {
 		n, err := conn.Read(buf)
 		if err != nil {
 			log.Println(err)
+			cm.Quit(name)
 			conn.Close()
 			return
 		}
-		log.Println(string(buf[:n]))
+		cm.Broadcast(fmt.Sprintf("<%s> %s", name, string(buf[:n])))
 	}
 }

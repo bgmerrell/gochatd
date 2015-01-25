@@ -2,13 +2,13 @@ package dummyconn
 
 import (
 	"errors"
-	"fmt"
 	"net"
 	"sync"
 	"time"
-
-	"github.com/bgmerrell/gochatd/handlers"
 )
+
+var ConnClosedErrRead = errors.New("Read error: connection closed")
+var ConnClosedErrWrite = errors.New("Write error: connection closed")
 
 // dummyConn implements net.Conn.  It is meant to use as a mock connection
 // for unit tests.  It communicates reads and writes over the Ch channel.
@@ -17,9 +17,6 @@ type dummyConn struct {
 	isClosed bool
 	mu       sync.Mutex
 }
-
-// Larger than handlers.BufSize for testing purposes
-const dummyBufSize = handlers.BufSize * 2
 
 // NewDummyConn returns an initialized dummyConn
 func NewDummyConn() *dummyConn {
@@ -32,13 +29,9 @@ func NewDummyConn() *dummyConn {
 // Read reads from Ch and stores the read bytes in b.  It returns the number
 // of bytes read and any errors.
 func (d *dummyConn) Read(b []byte) (n int, err error) {
-	if len(b) > dummyBufSize {
-		return 0, errors.New(fmt.Sprintf(
-			"Message too large to read (%d)", len(b)))
-	}
 	out := <-d.Ch
 	if out == nil {
-		return 0, errors.New("Connection closed")
+		return 0, ConnClosedErrRead
 	}
 	n = copy(b, out)
 	return n, nil
@@ -47,14 +40,10 @@ func (d *dummyConn) Read(b []byte) (n int, err error) {
 // Write writes the bytes from b into Ch.  It returns the number of bytes
 // written and any errors.
 func (d *dummyConn) Write(b []byte) (n int, err error) {
-	if len(b) > dummyBufSize {
-		return 0, errors.New(fmt.Sprintf(
-			"Message too large to write (%d)", len(b)))
-	}
 	defer func() {
 		// Return error if the "connection" (i.e., the channel) is closed
 		if e := recover(); e != nil {
-			err = errors.New("Connection is closed")
+			err = ConnClosedErrWrite
 		}
 	}()
 	b = b[:]
