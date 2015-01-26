@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"testing"
 	"time"
-
-	"github.com/bgmerrell/gochatd/handlers"
 )
+
+const bufSize = 512
 
 func TestWriteRead(t *testing.T) {
 	dc := NewDummyConn()
@@ -20,7 +20,7 @@ func TestWriteRead(t *testing.T) {
 			t.Errorf("n = %d, want %d", n, len(wMsg))
 		}
 	}()
-	buf := make([]byte, handlers.BufSize)
+	buf := make([]byte, bufSize)
 	n, err := dc.Read(buf)
 	if err != nil {
 		t.Fatalf("Unexpected error: %s", err)

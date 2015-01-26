@@ -1,0 +1,6 @@
+{
+	"log_path": "/tmp/gochatd.log",
+	"address": ":8079",
+	"max_name_length": 32,
+	"msg_buffer_size": 512
+}

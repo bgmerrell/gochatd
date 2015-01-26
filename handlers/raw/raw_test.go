@@ -8,20 +8,23 @@ import (
 
 	"github.com/bgmerrell/gochatd/chat"
 	"github.com/bgmerrell/gochatd/dummyconn"
-	"github.com/bgmerrell/gochatd/handlers"
 )
+
+var bufSize int = 512
+var maxNameSize int = 32
 
 var wg sync.WaitGroup
 
 func TestHandle(t *testing.T) {
-	cm := chat.NewChatManager()
+	cm := chat.NewChatManager(nil)
 	dc := dummyconn.NewDummyConn()
+	rh := NewRawHandler(bufSize, maxNameSize)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		Handle(cm, dc)
+		rh.Handle(cm, dc)
 	}()
-	buf := make([]byte, handlers.BufSize)
+	buf := make([]byte, bufSize)
 	n, err := dc.Read(buf)
 	if err != nil {
 		t.Fatal(err)
@@ -56,14 +59,15 @@ func TestHandle(t *testing.T) {
 }
 
 func TestHandleEmptyName(t *testing.T) {
-	cm := chat.NewChatManager()
+	cm := chat.NewChatManager(nil)
 	dc := dummyconn.NewDummyConn()
+	rh := NewRawHandler(bufSize, maxNameSize)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		Handle(cm, dc)
+		rh.Handle(cm, dc)
 	}()
-	buf := make([]byte, handlers.BufSize)
+	buf := make([]byte, bufSize)
 	n, err := dc.Read(buf)
 	if err != nil {
 		t.Fatal(err)
@@ -95,14 +99,15 @@ func TestHandleEmptyName(t *testing.T) {
 }
 
 func TestHandleLongName(t *testing.T) {
-	cm := chat.NewChatManager()
+	cm := chat.NewChatManager(nil)
 	dc := dummyconn.NewDummyConn()
+	rh := NewRawHandler(bufSize, maxNameSize)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		Handle(cm, dc)
+		rh.Handle(cm, dc)
 	}()
-	buf := make([]byte, handlers.BufSize)
+	buf := make([]byte, bufSize)
 	n, err := dc.Read(buf)
 	if err != nil {
 		t.Fatal(err)
@@ -134,22 +139,24 @@ func TestHandleLongName(t *testing.T) {
 
 func TestGetNameErrRequesting(t *testing.T) {
 	dc := dummyconn.NewDummyConn()
+	rh := NewRawHandler(bufSize, maxNameSize)
 	dc.Close()
-	_, err := getName(dc)
+	_, err := rh.getName(dc)
 	if !strings.HasPrefix(err.Error(), "Error requesting name") {
 		t.Error("Expected error requesting name")
 	}
 }
 
 func TestHandleErrReadingName(t *testing.T) {
-	cm := chat.NewChatManager()
+	cm := chat.NewChatManager(nil)
 	dc := dummyconn.NewDummyConn()
+	rh := NewRawHandler(bufSize, maxNameSize)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		Handle(cm, dc)
+		rh.Handle(cm, dc)
 	}()
-	buf := make([]byte, handlers.BufSize)
+	buf := make([]byte, bufSize)
 	n, err := dc.Read(buf)
 	if err != nil {
 		t.Fatal(err)
@@ -166,19 +173,20 @@ func TestHandleErrReadingName(t *testing.T) {
 }
 
 func TestHandleDuplicateUser(t *testing.T) {
-	cm := chat.NewChatManager()
+	cm := chat.NewChatManager(nil)
+	rh := NewRawHandler(bufSize, maxNameSize)
 	dc1 := dummyconn.NewDummyConn()
 	dc2 := dummyconn.NewDummyConn()
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		Handle(cm, dc1)
+		rh.Handle(cm, dc1)
 	}()
 	go func() {
 		defer wg.Done()
-		Handle(cm, dc2)
+		rh.Handle(cm, dc2)
 	}()
-	buf := make([]byte, handlers.BufSize)
+	buf := make([]byte, bufSize)
 
 	// "testuser" logging in on dc1
 	n, err := dc1.Read(buf)
