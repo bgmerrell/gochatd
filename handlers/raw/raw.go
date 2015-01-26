@@ -14,11 +14,16 @@ const (
 	namePrompt = "What's your name?: "
 )
 
+// rawHandler handles raw (as opposed to HTTP, e.g.) TCP connections from
+// clients.
 type rawHandler struct {
 	buf         []byte
 	maxNameSize int
 }
 
+// NewRawHandler returns an initialized rawHandler.  bufSize indicates the
+// size of the read buffer to be used, and maxNameSize indicates the
+// maximum allowed length of a client username.
 func NewRawHandler(bufSize int, maxNameSize int) *rawHandler {
 	return &rawHandler{
 		make([]byte, bufSize),
@@ -26,6 +31,8 @@ func NewRawHandler(bufSize int, maxNameSize int) *rawHandler {
 	}
 }
 
+// validateName returns a bool indicating whether the client username is
+// acceptable.
 func (r *rawHandler) validateName(name string) (ok bool) {
 	if len(name) == 0 || len(name) > r.maxNameSize {
 		return false
@@ -33,6 +40,9 @@ func (r *rawHandler) validateName(name string) (ok bool) {
 	return true
 }
 
+// getName queries and reads the username from the client.  The username is
+// returned as a string and an error is returned if any problems are
+// encountered.
 func (r *rawHandler) getName(conn net.Conn) (name string, err error) {
 	_, err = conn.Write([]byte(namePrompt))
 	if err != nil {
@@ -52,6 +62,9 @@ func (r *rawHandler) getName(conn net.Conn) (name string, err error) {
 	return name, err
 }
 
+// Handle conditionally adds a new connection (conn) to the ChatManager (cm)
+// and continuously reads from the client and broadcasts its messages until the
+// client disconnects.
 func (r *rawHandler) Handle(cm *chat.ChatManager, conn net.Conn) {
 	name, err := r.getName(conn)
 	if err != nil {

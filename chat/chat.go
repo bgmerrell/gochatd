@@ -20,12 +20,15 @@ func _timestamp() string {
 	return time.Now().UTC().Format(timestampLayout)
 }
 
+// ChatManager keeps track of clients connected to the chat service and is
+// responsible for communications between them.
 type ChatManager struct {
 	nameToConn map[string]net.Conn
 	chatLog    io.Writer
 	mu         sync.Mutex
 }
 
+// NewChatManager returns an initialized ChatManager
 func NewChatManager(chatLog io.Writer) *ChatManager {
 	return &ChatManager{
 		map[string]net.Conn{},
@@ -33,6 +36,7 @@ func NewChatManager(chatLog io.Writer) *ChatManager {
 		sync.Mutex{}}
 }
 
+// Join adds a user to the chat manager and announces the join to all clients.
 func (c *ChatManager) Join(name string, conn net.Conn) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -47,6 +51,8 @@ func (c *ChatManager) Join(name string, conn net.Conn) error {
 	return nil
 }
 
+// Quit removes a user from the chat manager and announces the quit to all
+// clients.
 func (c *ChatManager) Quit(name string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -56,6 +62,9 @@ func (c *ChatManager) Quit(name string) {
 		"%s * %s %s\n", Timestamp(), name, "has quit")))
 }
 
+// broadcast writes msg to all clients known to the ChatManager (but does not
+// lock any shared state; it should only be used if you already hold the
+// appropriate locks).
 func (c *ChatManager) broadcast(msg []byte) {
 	log.Printf("Broadcasting: %s", string(msg))
 	if c.chatLog != nil {
@@ -69,6 +78,7 @@ func (c *ChatManager) broadcast(msg []byte) {
 	}
 }
 
+// Broadcast writes msg to all clients known to the ChatManager.
 func (c *ChatManager) Broadcast(name string, msg []byte) {
 	out := []byte(fmt.Sprintf("%s <%s> %s", Timestamp(), name, msg))
 	c.mu.Lock()
