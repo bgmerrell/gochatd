@@ -3,7 +3,6 @@ package dummyconn
 import (
 	"errors"
 	"net"
-	"sync"
 	"time"
 )
 
@@ -15,15 +14,13 @@ var ConnClosedErrWrite = errors.New("Write error: connection closed")
 type dummyConn struct {
 	Ch       chan []byte
 	isClosed bool
-	mu       sync.Mutex
 }
 
 // NewDummyConn returns an initialized dummyConn
 func NewDummyConn() *dummyConn {
 	return &dummyConn{
 		make(chan []byte),
-		false,
-		sync.Mutex{}}
+		false}
 }
 
 // Read reads from Ch and stores the read bytes in b.  It returns the number
