@@ -44,12 +44,12 @@ func main() {
 	}
 	defer chatLogFile.Close()
 	cm := chat.NewChatManager(chatLogFile)
-	rh := raw.NewRawHandler(cfg.MsgBufSize, cfg.MaxNameLen)
 	ln, err := net.Listen("tcp", cfg.Addr)
 	if err != nil {
 		log.Fatal(err)
 	}
 	for {
+		rh := raw.NewRawHandler(cfg.MsgBufSize, cfg.MaxNameLen)
 		conn, err := ln.Accept()
 		if err != nil {
 
