@@ -1,6 +1,7 @@
 package chat
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -66,6 +67,9 @@ func (c *ChatManager) Quit(name string) {
 // lock any shared state; it should only be used if you already hold the
 // appropriate locks).
 func (c *ChatManager) broadcast(msg []byte) {
+	if !bytes.HasSuffix(msg, []byte("\n")) {
+		msg = append(msg, '\n')
+	}
 	log.Printf("Broadcasting: %s", string(msg))
 	if c.chatLog != nil {
 		_, err := c.chatLog.Write(msg)

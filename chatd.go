@@ -6,9 +6,11 @@ import (
 	"io/ioutil"
 	"log"
 	"net"
+	"net/http"
 	"os"
 
 	"github.com/bgmerrell/gochatd/chat"
+	httphandler "github.com/bgmerrell/gochatd/handlers/http"
 	"github.com/bgmerrell/gochatd/handlers/raw"
 )
 
@@ -44,6 +46,19 @@ func main() {
 	}
 	defer chatLogFile.Close()
 	cm := chat.NewChatManager(chatLogFile)
+
+	http.HandleFunc("/chat",
+		func(w http.ResponseWriter, r *http.Request) {
+			hndlErr := httphandler.Handle(w, r, cm, cfg.MsgBufSize, cfg.MaxNameLen)
+			if hndlErr != nil {
+				log.Print(hndlErr.Msg)
+				http.Error(w, hndlErr.Msg, hndlErr.Code)
+			}
+		})
+	go func() {
+		log.Fatal(http.ListenAndServe(":8080", nil))
+	}()
+
 	ln, err := net.Listen("tcp", cfg.Addr)
 	if err != nil {
 		log.Fatal(err)
