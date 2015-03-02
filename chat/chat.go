@@ -27,17 +27,20 @@ type history struct {
 	message *ring.Ring
 	head    *ring.Ring
 	maxSize int
+	mu	sync.Mutex
 }
 
 // newHistory returns a new history object reference.  The size indicates
 // the size of the history in number of lines.
 func newHistory(size int) *history {
 	r := ring.New(size)
-	return &history{r, r, size}
+	return &history{r, r, size, sync.Mutex{}}
 }
 
 // insert inserts a line into the chat history
 func (h *history) insert(msg []byte) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	if h.message.Value != nil {
 		h.head = h.message.Next()
 	}
@@ -47,6 +50,8 @@ func (h *history) insert(msg []byte) {
 
 // messages returns n lines of ordered chat messages from the history
 func (h *history) messages(n int) []byte {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	// don't allow requests greated than maxSize
 	if n > h.maxSize {
 		n = h.maxSize
