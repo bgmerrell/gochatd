@@ -21,10 +21,11 @@ func init() {
 }
 
 type config struct {
-	LogPath    string `json:"log_path"`
-	Addr       string `json:"address"`
-	MaxNameLen int    `json:"max_name_length"`
-	MsgBufSize int    `json:"msg_buffer_size"`
+	LogPath         string `json:"log_path"`
+	Addr            string `json:"address"`
+	MaxNameLen      int    `json:"max_name_length"`
+	MsgBufSize      int    `json:"msg_buffer_size"`
+	MaxHistoryLines int    `json:"max_history_lines"`
 }
 
 func main() {
@@ -45,11 +46,11 @@ func main() {
 		log.Fatalf("Failed to open chat log: %s", err)
 	}
 	defer chatLogFile.Close()
-	cm := chat.NewChatManager(chatLogFile)
+	cm := chat.NewChatManager(chatLogFile, cfg.MaxHistoryLines)
 
 	http.HandleFunc("/chat",
 		func(w http.ResponseWriter, r *http.Request) {
-			hndlErr := httphandler.Handle(w, r, cm, cfg.MsgBufSize, cfg.MaxNameLen)
+			hndlErr := httphandler.Handle(w, r, cm, cfg.MsgBufSize, cfg.MaxNameLen, cfg.MaxHistoryLines)
 			if hndlErr != nil {
 				log.Print(hndlErr.Msg)
 				http.Error(w, hndlErr.Msg, hndlErr.Code)
