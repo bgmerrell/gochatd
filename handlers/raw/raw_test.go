@@ -11,12 +11,15 @@ import (
 )
 
 var bufSize int = 512
+
+const historySize = 8
+
 var maxNameSize int = 32
 
 var wg sync.WaitGroup
 
 func TestHandle(t *testing.T) {
-	cm := chat.NewChatManager(nil)
+	cm := chat.NewChatManager(nil, historySize)
 	dc := dummyconn.NewDummyConn()
 	rh := NewRawHandler(bufSize, maxNameSize)
 	wg.Add(1)
@@ -59,7 +62,7 @@ func TestHandle(t *testing.T) {
 }
 
 func TestHandleEmptyName(t *testing.T) {
-	cm := chat.NewChatManager(nil)
+	cm := chat.NewChatManager(nil, historySize)
 	dc := dummyconn.NewDummyConn()
 	rh := NewRawHandler(bufSize, maxNameSize)
 	wg.Add(1)
@@ -99,7 +102,7 @@ func TestHandleEmptyName(t *testing.T) {
 }
 
 func TestHandleLongName(t *testing.T) {
-	cm := chat.NewChatManager(nil)
+	cm := chat.NewChatManager(nil, historySize)
 	dc := dummyconn.NewDummyConn()
 	rh := NewRawHandler(bufSize, maxNameSize)
 	wg.Add(1)
@@ -148,7 +151,7 @@ func TestGetNameErrRequesting(t *testing.T) {
 }
 
 func TestHandleErrReadingName(t *testing.T) {
-	cm := chat.NewChatManager(nil)
+	cm := chat.NewChatManager(nil, historySize)
 	dc := dummyconn.NewDummyConn()
 	rh := NewRawHandler(bufSize, maxNameSize)
 	wg.Add(1)
@@ -173,7 +176,7 @@ func TestHandleErrReadingName(t *testing.T) {
 }
 
 func TestHandleDuplicateUser(t *testing.T) {
-	cm := chat.NewChatManager(nil)
+	cm := chat.NewChatManager(nil, historySize)
 	rh := NewRawHandler(bufSize, maxNameSize)
 	dc1 := dummyconn.NewDummyConn()
 	dc2 := dummyconn.NewDummyConn()

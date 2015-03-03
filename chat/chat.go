@@ -27,7 +27,7 @@ type history struct {
 	message *ring.Ring
 	head    *ring.Ring
 	maxSize int
-	mu	sync.Mutex
+	mu      sync.Mutex
 }
 
 // newHistory returns a new history object reference.  The size indicates
